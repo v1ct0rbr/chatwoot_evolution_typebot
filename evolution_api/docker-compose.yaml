@@ -12,7 +12,6 @@ services:
     volumes:
       - evolution_api_instances:/evolution/instances
     depends_on:
-      - evolution-api-redis
       - evolution-api-postgres
       - evolution_api_rabbitmq
   
@@ -25,11 +24,9 @@ services:
       redis-server --port 6379 --appendonly yes
     volumes:
       - evolution_api_redis_data:/data
-    environment:
-      - name=value
     ports:
       - 6379:6379
-
+  
   evolution-api-postgres:
     container_name: evolution-api-postgres
     image: postgres:15
@@ -44,6 +41,7 @@ services:
       - POSTGRES_DB=evolution
     volumes:
       - evolution_api_postgres_data:/var/lib/postgresql/data
+
     
 
   evolution_api_pgadmin:
@@ -80,8 +78,8 @@ volumes:
   evolution_api_instances:
   evolution_api_postgres_data:
   evolution_api_pgadmin_data:
-  evolution_api_redis_data:
   evolution_api_rabbitmq_data:
+  evolution_api_redis_data:
 
 
 networks:

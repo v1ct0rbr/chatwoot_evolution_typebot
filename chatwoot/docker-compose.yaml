@@ -1,69 +1,56 @@
-version: '3'
 services:
-  chatwoot-postgres:
-    image: postgres:13
-    volumes:
-      - chatwoot-postgres-data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    networks:
-      - chatwoot-network
-
-  chatwoot-redis:
-    image: redis:6-alpine
-    volumes:
-      - chatwoot-redis-data:/data
-    networks:
-      - chatwoot-network
-
-  chatwoot-builder:
+  base: &base
     image: chatwoot/chatwoot:latest
+    env_file: .env ## Change this file for customized env variables
+    volumes:
+      - /data/storage:/app/storage
+
+  rails:
+    <<: *base
     depends_on:
       - postgres
       - redis
-    environment:
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
-      POSTGRES_HOST: postgres
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USERNAME: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      REDIS_URL: redis://redis:6379/0
-      RAILS_ENV: production
-      ENABLE_INBOXES: facebook,instagram,twilio
-      CHATWOOT_INBOX_MAILER_DOMAIN: example.com
-      CHATWOOT_INBOX_MAILER_SENDER_EMAIL: 'notifications@example.com'
-      FRONTEND_URL: ${FRONTEND_URL}
-    volumes:
-      - chatwoot-assets:/app/public
-    networks:
-      - chatwoot-network
     ports:
-      - "3000:3000"
-    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -b '0.0.0.0'"
+      - '127.0.0.1:3000:3000'
+    environment:
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+    entrypoint: docker/entrypoints/rails.sh
+    command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
+    restart: always
 
-  chatwoot-worker:
-    image: chatwoot/chatwoot:latest
+  sidekiq:
+    <<: *base
     depends_on:
       - postgres
       - redis
     environment:
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
-      POSTGRES_HOST: postgres
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USERNAME: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      REDIS_URL: redis://redis:6379/0
-      RAILS_ENV: production
-    networks:
-      - chatwoot-network
-    command: bundle exec sidekiq
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+    command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
+    restart: always
 
-volumes:
-  chatwoot-postgres-data:
-  chatwoot-redis-data:
-  chatwoot-assets:
+  postgres:
+    image: postgres:12
+    restart: always
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - /data/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=chatwoot
+      - POSTGRES_USER=postgres
+      # Please provide your own password.
+      - POSTGRES_PASSWORD=123456
 
-networks:
-  chatwoot-network:
+  redis:
+    image: redis:alpine
+    restart: always
+    command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
+    env_file: .env
+    volumes:
+      - /data/redis:/data
+    ports:
+      - '127.0.0.1:6379:6379'

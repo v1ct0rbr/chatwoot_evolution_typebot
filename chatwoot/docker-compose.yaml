@@ -1,0 +1,69 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:13
+    volumes:
+      - chatwoot-postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      - chatwoot-network
+
+  redis:
+    image: redis:6-alpine
+    volumes:
+      - chatwoot-redis-data:/data
+    networks:
+      - chatwoot-network
+
+  chatwoot:
+    image: chatwoot/chatwoot:latest
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USERNAME: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: redis://redis:6379/0
+      RAILS_ENV: production
+      ENABLE_INBOXES: facebook,instagram,twilio
+      CHATWOOT_INBOX_MAILER_DOMAIN: example.com
+      CHATWOOT_INBOX_MAILER_SENDER_EMAIL: 'notifications@example.com'
+      FRONTEND_URL: ${FRONTEND_URL}
+    volumes:
+      - chatwoot-assets:/app/public
+    networks:
+      - chatwoot-network
+    ports:
+      - "3000:3000"
+    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -b '0.0.0.0'"
+
+  worker:
+    image: chatwoot/chatwoot:latest
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USERNAME: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: redis://redis:6379/0
+      RAILS_ENV: production
+    networks:
+      - chatwoot-network
+    command: bundle exec sidekiq
+
+volumes:
+  chatwoot-postgres-data:
+  chatwoot-redis-data:
+  chatwoot-assets:
+
+networks:
+  chatwoot-network:

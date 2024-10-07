@@ -1,4 +1,3 @@
-version: '3.3'
 
 services:
   typebot-db:
@@ -21,7 +20,7 @@ services:
       typebot-db:
         condition: service_healthy
     ports:
-      - '8080:3000'
+      - '8089:3000'
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     env_file: .env
@@ -33,7 +32,7 @@ services:
         condition: service_healthy
     restart: always
     ports:
-      - '8081:3000'
+      - '8088:3000'
     env_file: .env
 
 

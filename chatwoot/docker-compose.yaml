@@ -1,6 +1,6 @@
 version: '3'
 services:
-  postgres:
+  chatwoot-postgres:
     image: postgres:13
     volumes:
       - chatwoot-postgres-data:/var/lib/postgresql/data
@@ -11,14 +11,14 @@ services:
     networks:
       - chatwoot-network
 
-  redis:
+  chatwoot-redis:
     image: redis:6-alpine
     volumes:
       - chatwoot-redis-data:/data
     networks:
       - chatwoot-network
 
-  chatwoot:
+  chatwoot-builder:
     image: chatwoot/chatwoot:latest
     depends_on:
       - postgres
@@ -43,7 +43,7 @@ services:
       - "3000:3000"
     command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -b '0.0.0.0'"
 
-  worker:
+  chatwoot-worker:
     image: chatwoot/chatwoot:latest
     depends_on:
       - postgres

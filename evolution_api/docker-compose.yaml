@@ -1,11 +1,12 @@
-version: '3.9'
 services:
   evolution-api:
     container_name: evolution_api
     image: atendai/evolution-api:v2.1.1
+    networks:
+      - evolution-net
     restart: always
     ports:
-      - "8080:8080"
+      - "8087:8080"
     env_file:
       - .env
     volumes:
@@ -13,16 +14,19 @@ services:
     depends_on:
       - evolution-api-redis
       - evolution-api-postgres
+      - evolution_api_rabbitmq
   
   evolution-api-redis:
     image: redis:latest
     networks:
       - evolution-net
-    container_name: redis
+    container_name: evolution-api-redis
     command: >
       redis-server --port 6379 --appendonly yes
     volumes:
       - evolution_api_redis_data:/data
+    environment:
+      - name=value
     ports:
       - 6379:6379
 
@@ -34,14 +38,13 @@ services:
     command: ["postgres", "-c", "max_connections=1000"]
     restart: always
     ports:
-      - 5432:5432
+      - 5455:5432
     environment:
       - POSTGRES_PASSWORD=123456
-      - POSTGRES_NAME=evolution
+      - POSTGRES_DB=evolution
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    expose:
-      - 5432
+      - evolution_api_postgres_data:/var/lib/postgresql/data
+    
 
   evolution_api_pgadmin:
     image: dpage/pgadmin4:latest
@@ -51,17 +54,34 @@ services:
       - PGADMIN_DEFAULT_EMAIL=email@example.com
       - PGADMIN_DEFAULT_PASSWORD=123456  
     volumes:
-      - pgadmin_data:/var/lib/pgadmin
+      - evolution_api_pgadmin_data:/var/lib/pgadmin
     ports:
       - 4000:80
     depends_on:
       - evolution-api-postgres
+  
+  evolution_api_rabbitmq:
+    container_name: evolution_api_rabbitmq
+    image: rabbitmq:management
+    environment:
+      - RABBITMQ_ERLANG_COOKIE=33H2CdkzF5WrnJ4ud6nkUdRTKXvbCHeFjvVL71p
+      - RABBITMQ_DEFAULT_VHOST=default
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=123456
+    volumes:
+      - evolution_api_rabbitmq_data:/var/lib/rabbitmq/
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - evolution-net
 
 volumes:
   evolution_api_instances:
   evolution_api_postgres_data:
   evolution_api_pgadmin_data:
   evolution_api_redis_data:
+  evolution_api_rabbitmq_data:
 
 
 networks:

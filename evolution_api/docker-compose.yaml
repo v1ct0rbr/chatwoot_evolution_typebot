@@ -25,7 +25,7 @@ services:
     volumes:
       - evolution_api_redis_data:/data
     ports:
-      - 6379:6379
+      - 6380:6379
   
   evolution-api-postgres:
     container_name: evolution-api-postgres
